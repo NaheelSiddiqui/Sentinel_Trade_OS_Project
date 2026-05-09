@@ -3,13 +3,15 @@
 //
 // Tests:
 //   TC-01: Basic buy/sell match (sanity check)
-//   TC-02: Race condition check — no money duplication under concurrent load
-//   TC-03: Semaphore capacity enforcement
-//   TC-04: Deadlock avoidance (lock ordering consistency)
-//   TC-05: Market order vs limit order behavior
-//   TC-06: Stress test — 100 threads, verify no data corruption
-//   TC-07: Price boundary checks
-//   TC-08: Order ID uniqueness across threads
+//   TC-02: No match when prices don't cross
+//   TC-03: Partial fill — remainder stays in book
+//   TC-04: Order ID uniqueness under 20-thread load
+//   TC-05: Semaphore capacity enforcement
+//   TC-06: Stress test — 100 traders, verify no data corruption
+//   TC-07: Market order priced at current market price
+//   TC-08: Concurrent price updates (thread safety)
+//   TC-09: Weighted average fill price across multiple partial fills
+//   TC-10: Order status transitions to FILLED / PARTIALLY_FILLED
 // =============================================================================
 
 #include "OrderBook.h"
@@ -19,6 +21,7 @@
 
 #include <iostream>
 #include <cassert>
+#include <cmath>
 #include <sstream>
 #include <set>
 #include <vector>
@@ -378,10 +381,115 @@ void tc08_priceUpdateSafety() {
     delete book;
 }
 
+// ── TC-09: Weighted Average Fill Price (BUG FIX 1 regression test) ───────────
+void tc09_weightedAvgFill() {
+    std::cout << "\nTC-09: Weighted Average Fill Price\n";
+
+    OrderBook* book = makeTestBook("TICK", 100.0);
+
+    // Buyer wants 10 shares @ $110 (a generous limit price). Two sellers cross
+    // it at different limit prices, producing two partial fills at different
+    // execution prices. The buy order's avgFillPrice must be the volume-
+    // weighted average of those two fills, not the simple average of the
+    // last two fills.
+    //
+    // Sell A:  4 shares @ $100   -> exec @ midpoint of (110, 100) = 105.0
+    // Sell B:  6 shares @ $108   -> exec @ midpoint of (110, 108) = 109.0
+    // Expected weighted avg = (4*105 + 6*109) / 10 = (420 + 654) / 10 = 107.4
+    Order sellA(1, "TICK", OrderType::LIMIT, OrderSide::SELL, 4, 100.0);
+    book->submitOrder(sellA);
+
+    Order buy(2, "TICK", OrderType::LIMIT, OrderSide::BUY, 10, 110.0);
+    book->submitOrder(buy);
+
+    auto t1 = book->matchOrders("TICK");
+
+    Order sellB(3, "TICK", OrderType::LIMIT, OrderSide::SELL, 6, 108.0);
+    book->submitOrder(sellB);
+
+    auto t2 = book->matchOrders("TICK");
+
+    double totalVal = 0.0;
+    int    totalQty = 0;
+    for (auto& t : t1) { totalVal += t.price * t.quantity; totalQty += t.quantity; }
+    for (auto& t : t2) { totalVal += t.price * t.quantity; totalQty += t.quantity; }
+
+    if (totalQty == 10)
+        testPassed("TC-09a: full quantity (10) filled across two trades");
+    else
+        testFailed("TC-09a: filled qty wrong",
+                   "got " + std::to_string(totalQty) + " expected 10");
+
+    double expectedAvg = 107.4;
+    double actualAvg   = totalQty ? totalVal / totalQty : 0.0;
+    if (std::abs(actualAvg - expectedAvg) < 0.01)
+        testPassed("TC-09b: weighted avg execution price = $" +
+                   std::to_string(actualAvg) +
+                   " (expected $" + std::to_string(expectedAvg) + ")");
+    else
+        testFailed("TC-09b: weighted avg wrong",
+                   "got $" + std::to_string(actualAvg) +
+                   " expected $" + std::to_string(expectedAvg));
+
+    delete book;
+}
+
+// ── TC-10: Order Status Transitions (BUG FIX 2 regression test) ──────────────
+void tc10_orderStatusTransitions() {
+    std::cout << "\nTC-10: Order Status (PARTIALLY_FILLED -> FILLED)\n";
+
+    OrderBook* book = makeTestBook("TICK", 100.0);
+
+    // 10-share buy meets a 4-share sell first; the buy should be left in the
+    // book with status = PARTIALLY_FILLED. A second 6-share sell then
+    // completes it (and the buy should disappear from the book entirely).
+    Order sellA(1, "TICK", OrderType::LIMIT, OrderSide::SELL, 4, 100.0);
+    Order buy  (2, "TICK", OrderType::LIMIT, OrderSide::BUY,  10, 100.0);
+    book->submitOrder(sellA);
+    book->submitOrder(buy);
+    book->matchOrders("TICK");
+
+    auto pendingBuys = book->getBuyOrders("TICK");
+    if (pendingBuys.size() == 1 &&
+        pendingBuys[0].status == OrderStatus::PARTIALLY_FILLED &&
+        pendingBuys[0].filledQty == 4 &&
+        pendingBuys[0].remaining() == 6)
+        testPassed("TC-10a: partial buy left as PARTIALLY_FILLED with 4 filled / 6 remaining");
+    else {
+        std::ostringstream s;
+        s << "size=" << pendingBuys.size();
+        if (!pendingBuys.empty()) {
+            s << " status=" << pendingBuys[0].statusStr()
+              << " filled=" << pendingBuys[0].filledQty
+              << " remaining=" << pendingBuys[0].remaining();
+        }
+        testFailed("TC-10a: partial-fill state wrong", s.str());
+    }
+
+    Order sellB(3, "TICK", OrderType::LIMIT, OrderSide::SELL, 6, 100.0);
+    book->submitOrder(sellB);
+    book->matchOrders("TICK");
+
+    auto buysAfter  = book->getBuyOrders("TICK");
+    auto sellsAfter = book->getSellOrders("TICK");
+    if (buysAfter.empty() && sellsAfter.empty())
+        testPassed("TC-10b: book is empty after fully matched orders");
+    else
+        testFailed("TC-10b: residual orders left in book",
+                   "buys=" + std::to_string(buysAfter.size()) +
+                   " sells=" + std::to_string(sellsAfter.size()));
+
+    delete book;
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 int main() {
-    // Suppress logger output during tests
-    Logger::getInstance().init("/dev/null", "/dev/null");
+    // Suppress logger output during tests. Path is irrelevant — quiet mode
+    // silences stdout/stderr; passing an obviously-throwaway name avoids
+    // littering the working directory with empty log files on platforms
+    // that don't have /dev/null.
+    Logger::getInstance().init("test_trades.log", "test_system.log");
+    Logger::getInstance().setQuiet(true);
 
     std::cout << BOLD;
     std::cout << "╔════════════════════════════════════════════════╗\n";
@@ -397,6 +505,8 @@ int main() {
     tc06_stressTest();
     tc07_marketOrderPrice();
     tc08_priceUpdateSafety();
+    tc09_weightedAvgFill();
+    tc10_orderStatusTransitions();
 
     std::cout << "\n";
     std::cout << "════════════════════════════════════════════════\n";

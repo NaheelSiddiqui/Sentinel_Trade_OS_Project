@@ -79,6 +79,12 @@ public:
     // Pending order counts per symbol
     std::map<std::string, std::pair<int,int>> getOrderDepth(); // {buys, sells}
 
+    // Snapshot of currently-resting orders for a symbol (for tests / UI).
+    // Returns copies; the per-stock mutex is held only for the duration of
+    // the copy.
+    std::vector<Order> getBuyOrders (const std::string& symbol);
+    std::vector<Order> getSellOrders(const std::string& symbol);
+
     // Total stats
     long getTotalTradesExecuted() const;
     long getTotalVolumeTraded() const;

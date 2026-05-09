@@ -32,7 +32,7 @@ bool Logger::init(const std::string& tradeLogPath,
                   const std::string& systemLogPath) {
     // --- SYSTEM CALL: open() ---
     // Flags: O_WRONLY (write-only), O_CREAT (create if not exists),
-    //        O_APPEND (append to end), O_TRUNC (truncate existing)
+    //        O_TRUNC (truncate existing)
     // Mode: 0644 = owner rw, group r, others r
     m_tradeFd = ::open(tradeLogPath.c_str(),
                        O_WRONLY | O_CREAT | O_TRUNC,
@@ -71,22 +71,31 @@ void Logger::writeToFd(int fd, const std::string& msg) {
 }
 
 void Logger::logTrade(const std::string& message) {
-    pthread_mutex_lock(&m_mutex);
+    // --- BUG FIX 3: Build the log line and write to file under the mutex,
+    // then release the mutex BEFORE calling std::cout.
+    // std::cout can block on buffered I/O; holding the mutex across it
+    // serializes all 20 trader threads and the matching engine needlessly.
     std::string line = "[" + timestamp() + "] [TRADE] " + message + "\n";
+
+    pthread_mutex_lock(&m_mutex);
     writeToFd(m_tradeFd, line);
-    // Also echo to stdout for real-time monitoring
-    std::cout << line;
     pthread_mutex_unlock(&m_mutex);
+
+    // Echo to stdout outside the lock — ordering of console lines may vary
+    // slightly but that is acceptable; file log remains consistent.
+    if (!m_quiet) std::cout << line;
 }
 
 void Logger::logSystem(LogLevel level, const std::string& message) {
-    pthread_mutex_lock(&m_mutex);
     std::string line = "[" + timestamp() + "] [" + levelStr(level) + "] " + message + "\n";
+
+    pthread_mutex_lock(&m_mutex);
     writeToFd(m_systemFd, line);
-    if (level == LogLevel::WARNING || level == LogLevel::ERROR_L) {
+    pthread_mutex_unlock(&m_mutex);
+
+    if (!m_quiet && (level == LogLevel::WARNING || level == LogLevel::ERROR_L)) {
         std::cerr << line;
     }
-    pthread_mutex_unlock(&m_mutex);
 }
 
 void Logger::log(LogLevel level, const std::string& message) {
@@ -112,8 +121,16 @@ std::string Logger::levelStr(LogLevel level) {
 
 std::string Logger::timestamp() {
     time_t now = time(nullptr);
-    struct tm* t = localtime(&now);
+    struct tm t_result;
+    // localtime() returns a pointer to a shared static struct; not thread-safe.
+    // POSIX provides localtime_r; the Windows CRT provides localtime_s with
+    // reversed argument order. Both write into a caller-supplied struct.
+#ifdef _WIN32
+    localtime_s(&t_result, &now);
+#else
+    localtime_r(&now, &t_result);
+#endif
     char buf[32];
-    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", t);
+    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &t_result);
     return std::string(buf);
 }

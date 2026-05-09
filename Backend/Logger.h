@@ -33,6 +33,9 @@ public:
     // Logs to both files
     void log(LogLevel level, const std::string& message);
 
+    // Suppress stdout/stderr echo (useful for tests). File logging continues.
+    void setQuiet(bool quiet) { m_quiet = quiet; }
+
     void close();
 
     ~Logger();
@@ -44,6 +47,7 @@ private:
     int         m_tradeFd;    // File descriptor for trade log
     int         m_systemFd;   // File descriptor for system log
     pthread_mutex_t m_mutex;  // Protect concurrent writes
+    bool        m_quiet = false;
 
     std::string levelStr(LogLevel level);
     std::string timestamp();

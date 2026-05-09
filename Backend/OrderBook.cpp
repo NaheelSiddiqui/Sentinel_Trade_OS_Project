@@ -142,8 +142,9 @@ std::vector<TradeRecord> OrderBook::matchSymbol(
         // Match condition: buyer willing to pay >= seller's ask
         if (bidPrice < askPrice) break;
 
-        Order& buyOrder  = const_cast<Order&>(buyIt->second);
-        Order& sellOrder = const_cast<Order&>(sellIt->second);
+        // Need mutable references to update fill state
+        Order buyOrder  = buyIt->second;
+        Order sellOrder = sellIt->second;
 
         int qty = std::min(buyOrder.remaining(), sellOrder.remaining());
         // Execute at midpoint price (price discovery)
@@ -160,18 +161,31 @@ std::vector<TradeRecord> OrderBook::matchSymbol(
         trade.timestamp      = time(nullptr);
         trades.push_back(trade);
 
-        // Update fill quantities
-        buyOrder.filledQty  += qty;
-        sellOrder.filledQty += qty;
+        // --- BUG FIX 1: Update avgFillPrice as a proper weighted average ---
+        // Formula: newAvg = (oldAvg * oldFilled + execPrice * qty) / newFilled
+        int newBuyFilled  = buyOrder.filledQty  + qty;
+        int newSellFilled = sellOrder.filledQty + qty;
 
-        // Weighted average fill price
-        buyOrder.avgFillPrice  = execPrice;
-        sellOrder.avgFillPrice = execPrice;
+        buyOrder.avgFillPrice = (buyOrder.avgFillPrice * buyOrder.filledQty
+                                  + execPrice * qty) / newBuyFilled;
+        sellOrder.avgFillPrice = (sellOrder.avgFillPrice * sellOrder.filledQty
+                                   + execPrice * qty) / newSellFilled;
+
+        buyOrder.filledQty  = newBuyFilled;
+        sellOrder.filledQty = newSellFilled;
+
+        // --- BUG FIX 2: Update Order.status to reflect fill state ---
+        buyOrder.status  = buyOrder.isComplete()
+                               ? OrderStatus::FILLED
+                               : OrderStatus::PARTIALLY_FILLED;
+        sellOrder.status = sellOrder.isComplete()
+                               ? OrderStatus::FILLED
+                               : OrderStatus::PARTIALLY_FILLED;
 
         m_totalTrades++;
         m_totalVolume += qty;
 
-        // Log the trade
+        // Build log message outside the mutex (defer cout to Logger, see Logger.cpp)
         std::ostringstream ss;
         ss << std::fixed << std::setprecision(2)
            << "MATCH " << symbol
@@ -181,12 +195,15 @@ std::vector<TradeRecord> OrderBook::matchSymbol(
            << " seller=T" << trade.sellerTraderId;
         Logger::getInstance().logTrade(ss.str());
 
-        // Remove fully filled orders
-        if (buyOrder.isComplete()) {
-            book.buyOrders.erase(buyIt);
+        // Remove fully filled orders; put partial fills back with updated state
+        book.buyOrders.erase(buyIt);
+        if (!buyOrder.isComplete()) {
+            book.buyOrders.emplace(buyOrder.price, buyOrder);
         }
-        if (sellOrder.isComplete()) {
-            book.sellOrders.erase(sellIt);
+
+        book.sellOrders.erase(sellIt);
+        if (!sellOrder.isComplete()) {
+            book.sellOrders.emplace(sellOrder.price, sellOrder);
         }
     }
 
@@ -237,3 +254,23 @@ std::map<std::string, std::pair<int,int>> OrderBook::getOrderDepth() {
 
 long OrderBook::getTotalTradesExecuted() const { return m_totalTrades.load(); }
 long OrderBook::getTotalVolumeTraded()   const { return m_totalVolume.load(); }
+
+std::vector<Order> OrderBook::getBuyOrders(const std::string& symbol) {
+    std::vector<Order> out;
+    auto it = m_books.find(symbol);
+    if (it == m_books.end()) return out;
+    pthread_mutex_lock(&it->second->mutex);
+    for (auto& kv : it->second->buyOrders) out.push_back(kv.second);
+    pthread_mutex_unlock(&it->second->mutex);
+    return out;
+}
+
+std::vector<Order> OrderBook::getSellOrders(const std::string& symbol) {
+    std::vector<Order> out;
+    auto it = m_books.find(symbol);
+    if (it == m_books.end()) return out;
+    pthread_mutex_lock(&it->second->mutex);
+    for (auto& kv : it->second->sellOrders) out.push_back(kv.second);
+    pthread_mutex_unlock(&it->second->mutex);
+    return out;
+}

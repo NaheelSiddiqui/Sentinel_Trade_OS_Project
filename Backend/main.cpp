@@ -181,7 +181,18 @@ int main() {
     // ── Spawn Trader Threads ─────────────────────────────────────────────────
     std::vector<pthread_t>    traderThreads(NUM_TRADERS);
     std::vector<TraderArgs>   traderArgs(NUM_TRADERS);
-    std::vector<TraderStats>  traderStats(NUM_TRADERS);
+
+    // --- BUG FIX 4: Reserve traderStats before taking pointers to elements.
+    // Without reserve(), a push_back or resize can trigger a reallocation that
+    // moves the entire vector to a new memory address, leaving any previously
+    // taken pointers (stored in dashArgs.traderStats below) dangling.
+    // By reserving exactly NUM_TRADERS slots up front, the internal buffer
+    // is fixed and no reallocation will ever occur while we hold those pointers.
+    std::vector<TraderStats>  traderStats;
+    traderStats.reserve(NUM_TRADERS);
+    for (int i = 0; i < NUM_TRADERS; i++) {
+        traderStats.emplace_back();  // default-construct in place
+    }
 
     for (int i = 0; i < NUM_TRADERS; i++) {
         traderArgs[i].traderId      = i + 1;
@@ -204,6 +215,7 @@ int main() {
     DashboardArgs dashArgs;
     dashArgs.orderBook = &orderBook;
     dashArgs.shutdown  = &g_shutdown;
+    // Pointers into traderStats are safe here because we reserved above
     for (auto& s : traderStats) dashArgs.traderStats.push_back(&s);
 
     pthread_t dashThread;

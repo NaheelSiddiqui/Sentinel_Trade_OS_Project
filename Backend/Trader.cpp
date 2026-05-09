@@ -6,6 +6,22 @@
 #include <iomanip>
 #include <unistd.h>   // usleep()
 #include <cmath>
+#include <random>
+#include <chrono>
+
+// Each trader thread owns its own RNG. The C library rand()/srand() use
+// a single global state that becomes a contention point and a source of
+// undefined behavior when called concurrently — every trader thread plus
+// the market maker were sharing it. thread_local mt19937 sidesteps both.
+namespace {
+std::mt19937& traderRng(int traderId) {
+    thread_local std::mt19937 rng(
+        static_cast<uint32_t>(
+            std::chrono::high_resolution_clock::now().time_since_epoch().count()
+            ^ (traderId * 2654435761u)));
+    return rng;
+}
+}
 
 // =============================================================================
 // Trader.cpp — Producer Thread Implementation
@@ -27,8 +43,7 @@ void* Trader::traderThreadFunc(void* arg) {
     args->stats->traderId = args->traderId;
     args->stats->isActive = true;
 
-    // Seed random with trader ID for reproducibility
-    srand(time(nullptr) ^ (args->traderId * 1234567));
+    // RNG is set up lazily on first call to traderRng() with this thread's id
 
     for (int i = 0; i < args->ordersToPlace && !args->shutdown->load(); i++) {
 
@@ -72,8 +87,15 @@ Order Trader::generateRandomOrder(int traderId,
                                    const std::vector<std::string>& symbols,
                                    OrderBook* book)
 {
+    auto& rng = traderRng(traderId);
+    std::uniform_int_distribution<size_t> symDist(0, symbols.size() - 1);
+    std::uniform_int_distribution<int>    typeDist(0, 3);    // 1-in-4 LIMIT
+    std::uniform_int_distribution<int>    sideDist(0, 1);
+    std::uniform_int_distribution<int>    qtyDist(1, 100);
+    std::uniform_int_distribution<int>    pctDist(-500, 500);
+
     // Pick a random symbol
-    std::string sym = symbols[rand() % symbols.size()];
+    std::string sym = symbols[symDist(rng)];
 
     // Get current price for context
     auto snapshot = book->getStockSnapshot();
@@ -82,19 +104,14 @@ Order Trader::generateRandomOrder(int traderId,
         if (s.symbol == sym) { currentPrice = s.currentPrice; break; }
     }
 
-    // Decide order type
-    OrderType  type = (rand() % 4 == 0) ? OrderType::LIMIT : OrderType::MARKET;
-    OrderSide  side = (rand() % 2 == 0) ? OrderSide::BUY   : OrderSide::SELL;
-
-    // Quantity: 1-100 shares
-    int qty = (rand() % 100) + 1;
+    OrderType  type = (typeDist(rng) == 0) ? OrderType::LIMIT : OrderType::MARKET;
+    OrderSide  side = (sideDist(rng) == 0) ? OrderSide::BUY   : OrderSide::SELL;
+    int        qty  = qtyDist(rng);
 
     double price = 0.0;
     if (type == OrderType::LIMIT) {
-        // Limit price within ±5% of market price
-        double pct   = (rand() % 1001 - 500) / 10000.0;  // -5% to +5%
+        double pct = pctDist(rng) / 10000.0;  // -5% to +5%
         price = currentPrice * (1.0 + pct);
-        // Round to 2 decimal places
         price = std::round(price * 100.0) / 100.0;
     }
 

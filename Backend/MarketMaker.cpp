@@ -4,7 +4,14 @@
 #include <cstdlib>
 #include <sstream>
 #include <iomanip>
+#include <random>
 #include <unistd.h>
+
+// M_PI is not guaranteed by the C++ standard; MinGW headers omit it
+// without _USE_MATH_DEFINES. Use a portable constexpr instead.
+#ifndef M_PI
+constexpr double M_PI = 3.14159265358979323846;
+#endif
 
 // =============================================================================
 // MarketMaker.cpp — Dedicated Price Discovery Thread
@@ -19,8 +26,6 @@ void* MarketMaker::marketMakerThreadFunc(void* arg) {
     Logger::getInstance().logSystem(LogLevel::INFO,
         "MarketMaker started. Volatility=" +
         std::to_string(args->volatility * 100) + "%");
-
-    srand(time(nullptr) ^ 0xDEADBEEF);
 
     double dt = args->updateIntervalMs / 1000.0;  // time step in seconds
 
@@ -48,10 +53,11 @@ void* MarketMaker::marketMakerThreadFunc(void* arg) {
 }
 
 double MarketMaker::gbmStep(double currentPrice, double volatility, double dt) {
-    // Box-Muller transform: generate standard normal random variable
-    double u1 = (rand() + 1.0) / (RAND_MAX + 1.0);
-    double u2 = (rand() + 1.0) / (RAND_MAX + 1.0);
-    double z  = sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);  // N(0,1)
+    // Per-thread RNG and standard-normal distribution. Avoids the global
+    // rand() state that the trader threads also touch.
+    thread_local std::mt19937 rng(std::random_device{}());
+    thread_local std::normal_distribution<double> nd(0.0, 1.0);
+    double z = nd(rng);  // N(0,1)
 
     // Slight upward drift (mu = 0.02 annual = ~0.0000634 per second)
     double mu = 0.00005;

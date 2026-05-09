@@ -1,0 +1,24 @@
+# Compiled binaries
+sentinel_trade
+sentinel_trade_gui
+a
+
+# Object files and dependency files
+*.o
+*.d
+
+# CMake build directories
+GUI/build/
+build/
+
+# Log files generated at runtime
+*.log
+
+# macOS metadata
+.DS_Store
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
