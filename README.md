@@ -133,6 +133,11 @@ Edit the constants near the top of `Backend/main.cpp`:
   ```
 - **`pthread.h: No such file or directory`** — You are on bare Windows.
   Use WSL2 (Ubuntu) or MSYS2 mingw64.
+- **GUI build error "invalid use of incomplete type `QScrollBar`"** — Qt6
+  only forward-declares scrollbar headers from `<QTextEdit>`. Pull the
+  full header in explicitly with `#include <QScrollBar>` in any source
+  file that calls `verticalScrollBar()`/`horizontalScrollBar()`. This is
+  already fixed in `systemwidget.cpp`.
 - **Tests fail after a code change** — Re-run `make clean && make test`.
 
 ## File-by-file map

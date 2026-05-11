@@ -4,6 +4,7 @@
 #include <QLabel>
 #include <QTextEdit>
 #include <QProgressBar>
+#include <QScrollBar>
 
 SystemWidget::SystemWidget(QWidget *parent)
     : QWidget(parent),
