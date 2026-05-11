@@ -17,6 +17,7 @@ MAIN_SRCS = main.cpp \
             Trader.cpp \
             MatchingEngine.cpp \
             MarketMaker.cpp \
+            BookSnapshot.cpp \
             Logger.cpp
 
 # Source files for test suite

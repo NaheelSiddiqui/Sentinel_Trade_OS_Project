@@ -2,6 +2,7 @@
 #include "Trader.h"
 #include "MatchingEngine.h"
 #include "MarketMaker.h"
+#include "BookSnapshot.h"
 #include "Semaphore.h"
 #include "Logger.h"
 
@@ -178,6 +179,17 @@ int main() {
     pthread_create(&matcherThread, nullptr,
                    MatchingEngine::matcherThreadFunc, &matcherArgs);
 
+    // ── Spawn BookSnapshot Thread ──────────────────────────────────────────
+    BookSnapshotArgs snapArgs;
+    snapArgs.orderBook  = &orderBook;
+    snapArgs.symbols    = symbols;
+    snapArgs.shutdown   = &g_shutdown;
+    snapArgs.intervalMs = 250;        // 4 Hz — plenty for human eyes
+    snapArgs.outPath    = "book.json";
+
+    pthread_t snapThread;
+    pthread_create(&snapThread, nullptr, BookSnapshot::threadFunc, &snapArgs);
+
     // ── Spawn Trader Threads ─────────────────────────────────────────────────
     std::vector<pthread_t>    traderThreads(NUM_TRADERS);
     std::vector<TraderArgs>   traderArgs(NUM_TRADERS);
@@ -238,6 +250,7 @@ int main() {
     // Join remaining threads
     pthread_join(matcherThread, nullptr);
     pthread_join(mmThread,      nullptr);
+    pthread_join(snapThread,    nullptr);
     pthread_join(dashThread,    nullptr);
 
     // ── Final Report ─────────────────────────────────────────────────────────

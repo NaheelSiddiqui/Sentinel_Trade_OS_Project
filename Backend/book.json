@@ -1,0 +1,26 @@
+{
+  "stocks":[
+    {"symbol":"AAPL","price":182.29,"open":182.50,"high":182.50,"low":181.39,"volume":57},
+    {"symbol":"AMZN","price":183.50,"open":185.60,"high":185.60,"low":183.50,"volume":218},
+    {"symbol":"BRK","price":354.28,"open":355.20,"high":355.20,"low":353.35,"volume":276},
+    {"symbol":"GOOG","price":143.73,"open":141.20,"high":143.73,"low":141.20,"volume":79},
+    {"symbol":"JPM","price":197.98,"open":196.30,"high":197.98,"low":196.15,"volume":121},
+    {"symbol":"META","price":464.20,"open":470.10,"high":470.10,"low":463.61,"volume":204},
+    {"symbol":"MSFT","price":375.54,"open":378.00,"high":378.00,"low":375.54,"volume":106},
+    {"symbol":"NVDA","price":922.08,"open":875.40,"high":922.08,"low":875.40,"volume":108},
+    {"symbol":"TSLA","price":179.22,"open":177.80,"high":179.22,"low":177.80,"volume":175},
+    {"symbol":"V","price":265.76,"open":270.50,"high":270.50,"low":265.76,"volume":179}
+  ],
+  "books":{
+    "AAPL":{"bids":[{"price":183.19,"qty":57},{"price":182.50,"qty":34},{"price":182.29,"qty":49}],"asks":[]},
+    "GOOG":{"bids":[],"asks":[{"price":141.20,"qty":25},{"price":143.07,"qty":98},{"price":143.73,"qty":97},{"price":144.97,"qty":73},{"price":149.28,"qty":68}]},
+    "MSFT":{"bids":[{"price":378.00,"qty":7},{"price":360.35,"qty":88}],"asks":[]},
+    "AMZN":{"bids":[{"price":176.34,"qty":67}],"asks":[{"price":183.50,"qty":67},{"price":185.58,"qty":89},{"price":185.60,"qty":38}]},
+    "TSLA":{"bids":[{"price":179.22,"qty":89},{"price":177.80,"qty":26}],"asks":[]},
+    "NVDA":{"bids":[{"price":889.07,"qty":75},{"price":875.40,"qty":93}],"asks":[{"price":900.67,"qty":156}]},
+    "META":{"bids":[],"asks":[{"price":463.61,"qty":60},{"price":464.79,"qty":13},{"price":472.14,"qty":97},{"price":483.12,"qty":38}]},
+    "JPM":{"bids":[{"price":197.98,"qty":165},{"price":196.30,"qty":41},{"price":194.97,"qty":13}],"asks":[]},
+    "BRK":{"bids":[{"price":355.20,"qty":94},{"price":353.35,"qty":24}],"asks":[{"price":362.33,"qty":22}]},
+    "V":{"bids":[{"price":265.76,"qty":20}],"asks":[{"price":270.50,"qty":65},{"price":273.18,"qty":22},{"price":273.66,"qty":24}]}
+  }
+}

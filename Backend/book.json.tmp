@@ -1,0 +1,26 @@
+{
+  "stocks":[
+    {"symbol":"AAPL","price":185.49,"open":182.50,"high":185.75,"low":179.60,"volume":2012},
+    {"symbol":"AMZN","price":173.83,"open":185.60,"high":185.60,"low":171.99,"volume":2018},
+    {"symbol":"BRK","price":367.89,"open":355.20,"high":367.89,"low":344.59,"volume":2064},
+    {"symbol":"GOOG","price":142.95,"open":141.20,"high":148.68,"low":139.67,"volume":1624},
+    {"symbol":"JPM","price":205.44,"open":196.30,"high":216.88,"low":195.34,"volume":1897},
+    {"symbol":"META","price":441.26,"open":470.10,"high":470.10,"low":424.51,"volume":1848},
+    {"symbol":"MSFT","price":412.10,"open":378.00,"high":414.95,"low":367.23,"volume":2335},
+    {"symbol":"NVDA","price":890.91,"open":875.40,"high":922.08,"low":869.88,"volume":1791},
+    {"symbol":"TSLA","price":186.59,"open":177.80,"high":186.66,"low":177.80,"volume":1987},
+    {"symbol":"V","price":264.06,"open":270.50,"high":275.57,"low":260.06,"volume":2115}
+  ],
+  "books":{
+    "AAPL":{"bids":[{"price":180.09,"qty":130},{"price":177.05,"qty":88}],"asks":[{"price":183.90,"qty":175},{"price":184.09,"qty":4},{"price":184.47,"qty":22},{"price":185.18,"qty":77},{"price":185.49,"qty":69}]},
+    "GOOG":{"bids":[{"price":141.86,"qty":257},{"price":140.25,"qty":73},{"price":140.18,"qty":97},{"price":140.10,"qty":138},{"price":136.59,"qty":96}],"asks":[{"price":142.06,"qty":114},{"price":143.54,"qty":78},{"price":143.85,"qty":84},{"price":146.72,"qty":15},{"price":146.92,"qty":65}]},
+    "MSFT":{"bids":[{"price":412.10,"qty":2},{"price":403.59,"qty":66},{"price":397.68,"qty":78},{"price":391.16,"qty":43},{"price":389.46,"qty":29}],"asks":[{"price":414.40,"qty":17},{"price":414.90,"qty":34}]},
+    "AMZN":{"bids":[{"price":176.32,"qty":130},{"price":176.28,"qty":82},{"price":176.04,"qty":43},{"price":175.58,"qty":4},{"price":175.39,"qty":5}],"asks":[{"price":178.51,"qty":14},{"price":178.56,"qty":47},{"price":178.78,"qty":19},{"price":181.38,"qty":78},{"price":183.54,"qty":89}]},
+    "TSLA":{"bids":[{"price":186.47,"qty":42},{"price":186.44,"qty":193},{"price":186.31,"qty":69},{"price":186.15,"qty":144},{"price":185.41,"qty":277}],"asks":[{"price":186.53,"qty":48},{"price":186.66,"qty":89},{"price":192.57,"qty":92}]},
+    "NVDA":{"bids":[{"price":878.62,"qty":7},{"price":877.39,"qty":138},{"price":875.40,"qty":93},{"price":869.98,"qty":84},{"price":869.88,"qty":143}],"asks":[{"price":889.89,"qty":2},{"price":897.55,"qty":88},{"price":899.77,"qty":60},{"price":902.32,"qty":87},{"price":903.30,"qty":62}]},
+    "META":{"bids":[{"price":442.84,"qty":38},{"price":442.10,"qty":6},{"price":428.97,"qty":8},{"price":427.09,"qty":96},{"price":419.89,"qty":90}],"asks":[{"price":447.64,"qty":21},{"price":447.76,"qty":79},{"price":452.22,"qty":24},{"price":456.11,"qty":84},{"price":460.00,"qty":76}]},
+    "JPM":{"bids":[{"price":206.80,"qty":50},{"price":205.93,"qty":17},{"price":205.78,"qty":93},{"price":205.44,"qty":59},{"price":205.10,"qty":30}],"asks":[{"price":212.02,"qty":43},{"price":212.06,"qty":6},{"price":216.36,"qty":74}]},
+    "BRK":{"bids":[{"price":358.08,"qty":9},{"price":350.34,"qty":41},{"price":348.92,"qty":71},{"price":348.66,"qty":156},{"price":347.63,"qty":29}],"asks":[{"price":367.89,"qty":35},{"price":371.61,"qty":22}]},
+    "V":{"bids":[{"price":264.06,"qty":21},{"price":262.89,"qty":19},{"price":262.32,"qty":84},{"price":261.01,"qty":13},{"price":260.54,"qty":19}],"asks":[{"price":266.69,"qty":41},{"price":267.95,"qty":71},{"price":268.04,"qty":29},{"price":269.97,"qty":93},{"price":271.51,"qty":77}]}
+  }
+}

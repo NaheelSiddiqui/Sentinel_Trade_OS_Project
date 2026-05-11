@@ -105,6 +105,7 @@ It spawns:
 | 20 × `Trader` | Producers — submit random orders | Semaphore (max 10 in trading room) |
 | 1 × `MatchingEngine` | Consumer — matches buys against sells | Condition variable (no busy-waiting) |
 | 1 × `MarketMaker` | Geometric-Brownian-Motion price ticks | Per-thread RNG |
+| 1 × `BookSnapshot` | Dumps `book.json` 4×/sec for the GUI | Atomic rename publish |
 | 1 × `Dashboard` | Live console snapshot every 2 s | — |
 
 The matching engine sleeps on `pthread_cond_wait` until a trader signals

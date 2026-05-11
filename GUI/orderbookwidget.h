@@ -1,5 +1,6 @@
 #pragma once
 #include <QWidget>
+#include "logmonitor.h"
 
 class QTableWidget;
 class QLabel;
@@ -8,15 +9,19 @@ class OrderBookWidget : public QWidget {
     Q_OBJECT
 public:
     explicit OrderBookWidget(QWidget *parent = nullptr);
-    
+
     void setStock(const QString &symbol);
-    void updateOrderBook(const QStringList &bids, const QStringList &asks);
+
+    // Render aggregated ladder for the current symbol.
+    void updateLadder(const BookLadder &ladder, double lastPrice);
 
 private:
     void setupUI();
-    
-    QLabel *m_titleLabel;
+
+    QString       m_symbol;
+    QLabel       *m_titleLabel;
+    QLabel       *m_summaryLabel;
     QTableWidget *m_bidTable;
     QTableWidget *m_askTable;
-    QLabel *m_spreadLabel;
+    QLabel       *m_spreadLabel;
 };

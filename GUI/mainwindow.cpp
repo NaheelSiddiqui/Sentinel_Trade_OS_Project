@@ -50,6 +50,7 @@ MainWindow::MainWindow(QWidget *parent)
         onTradesUpdated();
         onSystemLogsUpdated();
         onStatisticsUpdated();
+        onMarketUpdated();
     });
     refreshTimer->start(500);
 
@@ -105,6 +106,8 @@ void MainWindow::setupConnections()
             this, &MainWindow::onSystemLogsUpdated);
     connect(m_logMonitor, &LogMonitor::statisticsUpdated,
             this, &MainWindow::onStatisticsUpdated);
+    connect(m_logMonitor, &LogMonitor::marketUpdated,
+            this, &MainWindow::onMarketUpdated);
 
     connect(m_backend, &QProcess::readyReadStandardOutput,
             this, &MainWindow::onBackendStdout);
@@ -125,7 +128,9 @@ void MainWindow::startMonitoring()
     // the backend ourselves). MainWindow controls the working directory,
     // so these paths line up.
     QString dir = backendWorkingDir();
-    m_logMonitor->startMonitoring(dir + "/trades.log", dir + "/system.log");
+    m_logMonitor->startMonitoring(dir + "/trades.log",
+                                  dir + "/system.log",
+                                  dir + "/book.json");
 }
 
 QString MainWindow::backendWorkingDir() const
@@ -308,8 +313,23 @@ void MainWindow::onStatisticsUpdated()
         m_logMonitor->getTotalVolume());
 }
 
+void MainWindow::onMarketUpdated()
+{
+    // Push the latest tick table into the Market tab and refresh the
+    // Order Book tab for whatever symbol is currently selected.
+    auto ticks = m_logMonitor->getMarketTicks();
+    m_marketWidget->updateMarket(ticks);
+
+    BookLadder ladder = m_logMonitor->getBook(m_selectedStock);
+    double last = ticks.value(m_selectedStock).price;
+    m_orderBookWidget->updateLadder(ladder, last);
+}
+
 void MainWindow::onStockSelected(const QString &symbol)
 {
     m_selectedStock = symbol;
     m_orderBookWidget->setStock(symbol);
+    // Immediately repopulate the ladder for the newly-selected symbol so
+    // the user doesn't have to wait for the next refresh tick.
+    onMarketUpdated();
 }

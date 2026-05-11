@@ -24,6 +24,7 @@ private slots:
     void onTradesUpdated();
     void onSystemLogsUpdated();
     void onStatisticsUpdated();
+    void onMarketUpdated();
     void onStockSelected(const QString &symbol);
 
     // Backend process control
