@@ -20,12 +20,31 @@ void LogMonitor::startMonitoring(const QString &tradeLogPath, const QString &sys
 {
     m_tradeLogPath = tradeLogPath;
     m_systemLogPath = systemLogPath;
-    
+
     m_watcher->addPath(tradeLogPath);
     m_watcher->addPath(systemLogPath);
-    
+
     parseTradeLogs();
     parseSystemLogs();
+}
+
+void LogMonitor::resync()
+{
+    // Re-add paths in case the file was deleted+recreated (which loses the
+    // QFileSystemWatcher hook), then re-parse from scratch.
+    if (!m_tradeLogPath.isEmpty()) {
+        m_watcher->removePath(m_tradeLogPath);
+        m_watcher->addPath(m_tradeLogPath);
+    }
+    if (!m_systemLogPath.isEmpty()) {
+        m_watcher->removePath(m_systemLogPath);
+        m_watcher->addPath(m_systemLogPath);
+    }
+    parseTradeLogs();
+    parseSystemLogs();
+    emit tradesUpdated();
+    emit systemLogsUpdated();
+    emit statisticsUpdated();
 }
 
 void LogMonitor::onTradeLogChanged(const QString &path)

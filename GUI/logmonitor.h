@@ -27,7 +27,11 @@ public:
     ~LogMonitor();
 
     void startMonitoring(const QString &tradeLogPath, const QString &systemLogPath);
-    
+
+    // Wipe cached trades / system entries and re-parse from disk. Useful
+    // when the backend is restarted and its log files are truncated.
+    void resync();
+
     QVector<TradeEntry> getRecentTrades(int count = 50);
     QVector<SystemEntry> getRecentSystemLogs(int count = 100);
     

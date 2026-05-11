@@ -59,31 +59,35 @@ make
 
 Produces `GUI/build/sentinel_trade_gui`.
 
-### 5. Run backend + GUI together
-
-The GUI hard-codes its log paths to `../trades.log` and `../system.log`
-(relative to the GUI's working directory). The simplest setup is to run
-the backend from inside `GUI/` so the logs land where the GUI expects.
-
-**Terminal 1 — backend:**
-
-```bash
-cd GUI
-../Backend/sentinel_trade
-```
-
-**Terminal 2 — GUI:**
+### 5. Run the GUI (the backend is auto-launched)
 
 ```bash
 cd GUI/build
 ./sentinel_trade_gui
 ```
 
-The GUI window opens with four tabs (Market, Order Book, Trades, System)
-and updates roughly every 500 ms as the backend appends to the logs.
+That's it — one terminal. The GUI:
 
-Stop the backend with `Ctrl+C` — it prints a final report
-(total trades, total volume, per-trader order counts) before exiting.
+1. Locates `sentinel_trade` at `../../Backend/sentinel_trade` and spawns
+   it via `QProcess` on launch.
+2. Sets the backend's working directory to `GUI/` so the log files land
+   where the existing `LogMonitor` already watches them.
+3. Pipes the backend's stdout/stderr into the **System** tab's live
+   console pane, so you see trade matches scroll in real time.
+4. Provides **Start / Stop / Restart** buttons in the toolbar. Stop sends
+   `SIGINT` so the backend prints its final report before exiting.
+5. Terminates the backend cleanly when you close the window.
+
+The four tabs (Market, Order Book, Trades, System) update roughly every
+500 ms as the backend appends to the logs. The status pill in the upper
+right of the **System** tab shows whether the backend is running.
+
+**Headless mode (no GUI):**
+
+```bash
+cd Backend
+./sentinel_trade           # original behaviour — Ctrl+C to stop
+```
 
 ## What the backend does on start-up
 
@@ -124,13 +128,13 @@ Edit the constants near the top of `Backend/main.cpp`:
 - **`cmake` cannot find Qt6** — Install `qt6-base-dev qt6-tools-dev
   qt6-charts-dev`. On Ubuntu 22.04 you may need
   `sudo apt-get install qt6-base-dev-tools` as well.
-- **GUI shows empty tabs** — Backend must be writing to
-  `GUI/trades.log` and `GUI/system.log`. Run the backend from inside
-  `GUI/` (see step 5 above), or symlink the log files:
-  ```bash
-  ln -sf ../Backend/trades.log GUI/trades.log
-  ln -sf ../Backend/system.log GUI/system.log
-  ```
+- **GUI shows "Backend: not found"** — Build the backend first
+  (`cd Backend && make`). The GUI looks for `sentinel_trade` at these
+  locations, relative to the GUI executable, and picks the first match:
+  `../../Backend/`, `../Backend/`, or the GUI exe's own directory.
+- **GUI tabs are empty even though the backend is running** — Click the
+  Start button in the toolbar, or check the System tab's live-output pane
+  for an error message from `QProcess`.
 - **`pthread.h: No such file or directory`** — You are on bare Windows.
   Use WSL2 (Ubuntu) or MSYS2 mingw64.
 - **GUI build error "invalid use of incomplete type `QScrollBar`"** — Qt6
